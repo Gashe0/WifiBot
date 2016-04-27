@@ -1,83 +1,96 @@
 #include "connexion.h"
 
 
-Connexion::Connexion(QObject *parent):
-    QObject(parent)
+Connexion::Connexion()
 {
+    this->socket = new QTcpSocket();
 }
 
-Connexion::Connexion(QObject *parent,QString adr, QString po):
-    QObject(parent)
+Connexion::~Connexion()
 {
-     adresse = adr.toStdString().c_str();
-     port = po.toInt();
+    delete socket;
 }
 
-Connexion::setAdresse(QString adr){
-    adresse = adr.toStdString().c_str();
-}
 
-Connexion::setPort( QString po){
-    port = po.toInt();
-}
-
-void Connexion::doConnect()
+bool Connexion::connectTo(QString host, int port)
 {
-     socket = new QTcpSocket(this);
+    bool connected = true;
 
-     connect(socket, SIGNAL(connected()),this, SLOT(connected()));
-     connect(socket, SIGNAL(disconnected()),this, SLOT(disconnected()));
-     connect(socket, SIGNAL(bytesWritten(qint64)),this, SLOT(bytesWritten(qint64)));
-     connect(socket, SIGNAL(readyRead()),this, SLOT(readyRead()));
+    qDebug() << "Demande de connexion :\n Host : " << host << "\nPort : " << port << "\n";
 
+    socket->connectToHost(host, port);
 
-     qDebug() << "connecting...";
-         socket->connectToHost(adresse, port);
+    if(!socket->waitForConnected(5000))
+        connected = false;
 
-         if(!socket->waitForConnected(3000))
-         {
-             qDebug() << "Error: " << socket->errorString();
-         }
+    return connected;
 }
 
-void Connexion::connected()
+void Connexion::disconnect()
 {
-    qDebug() << "connected...";
+    socket->disconnectFromHost();
+    delete socket;
+}
 
+
+void Connexion::generateRequest(Roues r)
+{
     buf.clear();
-    buf.append((char)0xff);
-    buf.append((char)0x07);
-    buf.append((char)0x00);
-    buf.append((char)0x00);
-    buf.append((char)0x00);
-    buf.append((char)0x00);
+    unsigned char fL, fR, char7 = 0;
 
-    //avancer
-    buf.clear();
-    buf.append((char)0xff);
-    buf.append((char)0x07);
-    buf.append((char)vitesse);
-    buf.append((char)0x00);
-    buf.append((char)vitesse);
-    buf.append((char)0x00);
+    if(r.getForward())
+    {
+        if(r.getBackward())
+            char7 = 160+64;
+        else
+            char7 = 240;
+    }
+    else
+        char7 = 160;
 
+    char7 += r.getPID();
+
+    fL = r.getLeft()*r.getSpeed()/100*2.4;
+    fR = r.getRight()*r.getSpeed()/100*2.4;
+
+    buf.append((unsigned char)0xFF);
+    buf.append((unsigned char)0x07);
+
+    buf.append(fL);
+    buf.append(fL >> 8);
+    buf.append(fR);
+    buf.append(fR >> 8);
+    buf.append(char7);
+
+    quint16 crc = crc16(buf,1);
+
+    buf.append((char)(crc));
+    buf.append((char)(crc>>8));
 
     socket->write(buf);
     socket->flush();
 }
 
-void Connexion::disconnected()
+QByteArray Connexion::getData()
 {
-    qDebug() << "disconnected...";
+    if(socket->bytesAvailable() >= 21)
+        return socket->readAll();
+    else
+        return QByteArray();
 }
 
-void Connexion::bytesWritten(qint64 bytes)
-{
-    qDebug() << bytes << " bytes written...";
-}
-
-void Connexion::readyRead()
-{
-    qDebug() << "reading...";
-    qDebug() << socket->readAll();
+quint16 Connexion::crc16(QByteArray byteArray, int pos){
+    unsigned char *data = (unsigned char* )byteArray.constData();
+    quint16 crc = 0xFFFF;
+    quint16 Polynome = 0xA001;
+    quint16 Parity = 0;
+    for(; pos < byteArray.length(); pos++){
+        crc ^= *(data+pos);
+        for (unsigned int CptBit = 0; CptBit <= 7 ; CptBit++){
+            Parity= crc;
+            crc >>= 1;
+            if (Parity%2 == true) crc ^= Polynome;
+        }
+    }
+    return crc;
 }

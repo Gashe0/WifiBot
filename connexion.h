@@ -6,6 +6,10 @@
 #include <iostream>
 #include <QTcpSocket>
 #include <QAbstractSocket>
+#include <QTimer>
+
+
+#include "roues.h"
 
 
 using namespace std;
@@ -14,27 +18,20 @@ class Connexion : public QObject
 {
     Q_OBJECT
 public:
-    Connexion(QObject*);
-    Connexion(QObject*,QString,QString);
+    Connexion();
+    ~Connexion();
+    bool connectTo(QString host, int port);
+    void disconnect();
+    void generateRequest(Roues r);
+    QByteArray getData();
+    quint16 crc16(QByteArray byteArray, int pos);
 
-    void doConnect();
-    setAdresse(QString);
-    setPort(QString);
 private:
     QByteArray buf;
     QTcpSocket *socket;
     const char* adresse;
     int port;
 
-    quint16 vitesse;
-
-signals:
-
-public slots:
-    void connected();
-    void disconnected();
-    void bytesWritten(qint64 bytes);
-    void readyRead();
 };
 
 #endif // CONNEXION_H

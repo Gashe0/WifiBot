@@ -1,0 +1,12 @@
+INPUT(
+./release\main.o
+./release\mainwindow.o
+./release\connexion.o
+./release\roues.o
+./release\camera.o
+./release\capteur.o
+./release\tags.o
+./release\moc_mainwindow.o
+./release\moc_connexion.o
+./release\moc_camera.o
+);

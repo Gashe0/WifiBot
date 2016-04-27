@@ -1,0 +1,12 @@
+INPUT(
+./debug\main.o
+./debug\mainwindow.o
+./debug\connexion.o
+./debug\roues.o
+./debug\camera.o
+./debug\capteur.o
+./debug\tags.o
+./debug\moc_mainwindow.o
+./debug\moc_connexion.o
+./debug\moc_camera.o
+);
